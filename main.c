@@ -10,9 +10,18 @@
 
 void send_msg(char msg){
 
-    // Envios do microcontrolador
+    // Chama subrotinas para envios do microcontrolador
 
     switch(msg){
+        case 'EB':
+            // Mensagem de resposta do microcontrolador após efetivado pedido de bloqueio pelo servidor
+            break;
+        case 'ED':
+            // Mensagem de resposta do microcontrolador após efetivado pedido de desbloqueio pelo servidor
+            break;
+        case 'EB':
+            // Mensagem de resposta do microcontrolador após efetivado evio de data/hora pelo servidor
+            break;
         case 'EO':
             // Envio de sistema operando
             break;
@@ -48,11 +57,14 @@ void send_msg(char msg){
 
 void process_msg(char msg){
 
-    // Envios do servidor
+    // Chama subrotinas de acordo com os envios do servidor
 
     switch (msg){
         case 'SB':
             // Bloqueio: Mensagem enviada pelo servidor para bloquear sistema
+            // Neste caso deve-se exibir a mensagem “DESLIGADO!”
+            // Só volta a funcionar se o aplicativo de servidor externo liberar o sistema.
+            // Microcontrolador deve responder 'EB'
             break;
         case 'SD':
             // Desbloqueio: Mensagem enviada pelo servidor para desbloquear sistema
@@ -100,12 +112,39 @@ void process_msg(char msg){
 
 }
 
+void handle_vehicle(){
+    /*
+    * Para poder entrar no estacionamento o
+    motorista (cliente) irá parar seu carro a frente da
+    cancela, quando será lida sua placa. Um sensor
+    indica a presença de veículo na entrada.
+    * Seu sistema então pode autorizar a entrada
+    * Para tanto irá abrir a cancela e permitir sua
+    entrada e para que possa estacionar no interior
+    do recinto.
+    * O tempo de permanência do
+    veiculo no estacionamento definirá
+    o valor a ser pago na sua saída
+    
+    * O tempo máximo de permanência na frente da
+    cancela sem entrar não pode exceder 1 minuto.
+    * Se isto acontecer a cancela fecha e o cliente
+    deve se identificar de novo.
+    * Nos últimos 20 segundos antes de fechar a
+    cancela deve-se gerar uma informação visual
+    em LED (piscando 2 vezes por segundo)
+    */
+
+}
+
 int main(void)
 {
 
     // Initializations
     // Heartbeat
     // Message listening
+    while(1) {
         // Serial decoding
         // Message processing
+    }
 }
