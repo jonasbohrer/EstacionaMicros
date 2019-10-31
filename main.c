@@ -8,6 +8,23 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+void escrita_valor(char valor)
+{
+	PORTG |= (1 << 5); //RS = 1;
+	PORTE |= (1 << 5); //EN = 1;
+	PORTD = valor; //porta1 = comando;
+	PORTH = valor >> 4;
+	PORTJ = valor >> 6;
+	PORTE &= ~(1 << 5); //EN = 0;
+	atraso_40us();
+}
+
+void escrita_texto(char text[]){
+    for (i = 0; text[i] != 0; i++){
+        escrita_valor(text[i]);
+    }
+}
+
 void send_msg(char msg){
 
     // Chama subrotinas para envios do microcontrolador
@@ -65,7 +82,10 @@ void process_msg(char msg){
             // Neste caso deve-se exibir a mensagem “DESLIGADO!”
             // Só volta a funcionar se o aplicativo de servidor externo liberar o sistema.
             // Microcontrolador deve responder 'EB'
-            break;
+            {
+                escrita_texto("DESLIGADO!")
+                break;
+            }
         case 'SD':
             // Desbloqueio: Mensagem enviada pelo servidor para desbloquear sistema
             break;
@@ -75,9 +95,6 @@ void process_msg(char msg){
         case 'SN':
             // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ('1') de saída ('2')
                 //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo 'IDE')
-            break;
-        case 'EN':
-            // Envio de abertura de cancela: Mensagem de resposta do servidor 
             break;
         case 'SA':
             // Envio de abertura de cancela: Mensagem de resposta do servidor 
