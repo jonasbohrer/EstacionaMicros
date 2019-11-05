@@ -101,6 +101,11 @@ void transmitir_caractere(char caractere)
 		UDR0 = caractere;
 }
 
+void transmitir_string(char text[]){
+    for (i = 0; text[i] != 0; i++){
+        transmitir_caractere(text[i]);
+    }
+
 void send_msg(char msg){
 
     // Chama subrotinas para envios do microcontrolador
@@ -108,6 +113,7 @@ void send_msg(char msg){
     switch(msg){
         case 'EB':
             // Mensagem de resposta do microcontrolador após efetivado pedido de bloqueio pelo servidor
+            transmitir_string('EB');
             break;
         case 'ED':
             // Mensagem de resposta do microcontrolador após efetivado pedido de desbloqueio pelo servidor
@@ -122,10 +128,12 @@ void send_msg(char msg){
             // Envio de novo carro: Mensagem de resposta do microcontrolador
             break;
         case 'EA':
-            // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela '1' (entrada) ou '2' (saída)
+            // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela '1' (entrada) ou '2' (saída) [EAn]
+            transmitir_string('EA1');
             break;
         case 'EF':
-            // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela '1' (entrada) ou '2' (saída)
+            // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela '1' (entrada) ou '2' (saída) [EFn]
+            transmitir_string('EF1');
             break;
         case 'ES':
             // Envio de carro saindo: Mensagem de resposta do microcontrolador
