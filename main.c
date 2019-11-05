@@ -7,8 +7,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-void atraso_40us()
-{
+void atraso_40us(){
 	// initialize timer
 	TCCR0A = 0;
 	TCCR0B = 0;
@@ -28,8 +27,7 @@ void atraso_40us()
 	}
 }
 
-void atraso_1650us()
-{
+void atraso_1650us(){
 	TCCR0A = 0;
 	TCCR0B = 0x04;
 	
@@ -46,15 +44,13 @@ void atraso_1650us()
 	}
 }
 
-void atraso_us(int tempo) //Calcula a quantidade de atrasos em micro segundos em passos de 40
-{
+void atraso_us(int tempo){ //Calcula a quantidade de atrasos em micro segundos em passos de 40
 	int i;
 	int atrasos = (tempo+39)/40;
 	for(i=0; i<atrasos; i++){atraso_40us();}
 }
 
-void escrita_valor(char valor)
-{
+void escrita_valor(char valor){
 	PORTG |= (1 << 5); //RS = 1;
 	PORTE |= (1 << 5); //EN = 1;
 	PORTD = valor; //porta1 = comando;
@@ -64,8 +60,7 @@ void escrita_valor(char valor)
 	atraso_40us();
 }
 
-void escrita_comando(char comando)
-{
+void escrita_comando(char comando){
 	PORTG &= ~(1 << 5); //RS = 0;
 	PORTE |= (1 << 5); //EN = 1;
 	PORTD = comando; //porta1 = comando;
@@ -75,8 +70,7 @@ void escrita_comando(char comando)
 	atraso_40us();
 }
 
-void lcd_config()
-{
+void lcd_config(){
 	escrita_comando(0x38); //'00111000'
 	escrita_comando(0x38); //'00111000'
 	escrita_comando(0x0C); //'00001100'
@@ -86,8 +80,7 @@ void lcd_config()
 	atraso_1650us();
 }
 
-void configurar_serial_19200()
-{
+void configurar_serial_19200(){
 	UCSR0C = 0x06; // 8-N-1
 	//Colocar 51 nos registradores de bit rate
 	UBRR0L = 0x33;
@@ -95,16 +88,21 @@ void configurar_serial_19200()
 	UCSR0B = (1<<4) | (1<<3);
 }
 
-void transmitir_caractere(char caractere)
-{
+char receber_caractere(void) {
+    while(!(UCSR0A & (1<<RXC0)));
+    return UDR0;
+}
+
+void transmitir_caractere(char caractere){
 	while(!(UCSR0A & (1<<UDRE0)));
-		UDR0 = caractere;
+    UDR0 = caractere;
 }
 
 void transmitir_string(char text[]){
     for (i = 0; text[i] != 0; i++){
         transmitir_caractere(text[i]);
     }
+}
 
 void send_msg(char msg){
 
@@ -238,8 +236,7 @@ void handle_vehicle(){
 
 }
 
-int main(void)
-{
+int main(void){
 	DDRB = (1 << 7);
 	DDRG = (1 << 5);
 	DDRE = (1 << 5);
