@@ -122,48 +122,48 @@ void transmitir_string(char text[]){
     }
 }
 
-void enviar_msg(char msg){
+void enviar_msg(char msg[]){
 
     // Chama subrotinas para envios do microcontrolador
 
     switch(msg){
-        case 'EB':
+        case "EB":
             // Mensagem de resposta do microcontrolador após efetivado pedido de bloqueio pelo servidor
-            transmitir_string('EB');
+            transmitir_string("EB");
             break;
-        case 'ED':
+        case "ED":
             // Mensagem de resposta do microcontrolador após efetivado pedido de desbloqueio pelo servidor
             break;
-        case 'EB':
+        case "EB":
             // Mensagem de resposta do microcontrolador após efetivado evio de data/hora pelo servidor
             break;
-        case 'EO':
+        case "EO":
             // Envio de sistema operando
             break;
-        case 'EN':
+        case "EN":
             // Envio de novo carro: Mensagem de resposta do microcontrolador
             break;
-        case 'EA':
-            // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela '1' (entrada) ou '2' (saída) [EAn]
-            transmitir_string('EA1');
+        case "EA":
+            // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela "1" (entrada) ou "2" (saída) [EAn]
+            transmitir_string("EA1");
             break;
-        case 'EF':
-            // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela '1' (entrada) ou '2' (saída) [EFn]
-            transmitir_string('EF1');
+        case "EF":
+            // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela "1" (entrada) ou "2" (saída) [EFn]
+            transmitir_string("EF1");
             break;
-        case 'ES':
+        case "ES":
             // Envio de carro saindo: Mensagem de resposta do microcontrolador
             break;
-        case 'EC':
+        case "EC":
             // Envio de número do cartão: Mensagem enviada pelo microcontrolador para informar cartão digitado (Ex. “123456”)
             break;
-        case 'EP':
+        case "EP":
             // Envio de pagamento: Mensagem enviada pelo microcontrolador para informar senha (Ex. “123456”) e valor a pagar (Ex 18,00)
             break;
-        case 'EI':
+        case "EI":
             // Envio de impressão de nota: Mensagem enviada pelo microcontrolador para imprimir nota fiscal
             break;
-        case 'EM':
+        case "EM":
             // Envio de pedido de mapa: Mensagem enviada pelo microcontrolador para solicitar mapa de ocupação
             break;
         default:
@@ -177,50 +177,50 @@ void processar_msg(char msg){
     // Chama subrotinas de acordo com os envios do servidor
 
     switch (msg){
-        case 'SB':
+        case "SB":
             // Bloqueio: Mensagem enviada pelo servidor para bloquear sistema
             // Neste caso deve-se exibir a mensagem “DESLIGADO!”
             // Só volta a funcionar se o aplicativo de servidor externo liberar o sistema.
-            // Microcontrolador deve responder 'EB'
+            // Microcontrolador deve responder "EB"
             {
                 escrita_texto("DESLIGADO!")
                 break;
             }
-        case 'SD':
+        case "SD":
             // Desbloqueio: Mensagem enviada pelo servidor para desbloquear sistema
             break;
-        case 'SH':
+        case "SH":
             // Envio de data e horário: Mensagem enviada pelo servidor para informar data e horário
             break;
-        case 'SN':
-            // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ('1') de saída ('2')
-                //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo 'IDE')
+        case "SN":
+            // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ("1") de saída ("2")
+                //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
             break;
-        case 'SA':
+        case "SA":
             // Envio de abertura de cancela: Mensagem de resposta do servidor 
             break;
-        case 'SF':
+        case "SF":
             // Envio de fechamento de cancela: Mensagem de resposta do servidor 
             break;
-        case 'SS':
-            // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ('1') de saída ('2') 
+        case "SS":
+            // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de saída ("2") 
             break;
-        case 'SC':
+        case "SC":
             // Envio de número do cartão: Mensagem de resposta do servidor 
                 // Caso cartão enviado não exista
                 // Informação de nome do titular do cartão
             break;
-        case 'SP':
+        case "SP":
             // Envio de pagamento: Mensagem de resposta do servidor 
                 // Tipos de mensagem de resposta do servidor de envio de pagamento
                     //Caso senha informada
                     //Caso saldo do cartão seja insuficiente não confira
                     //Resposta confirmando pagamento
             break;
-        case 'SI':
+        case "SI":
             // Envio de impressão de nota: Mensagem de resposta do servidor 
             break;
-        case 'SM':
+        case "SM":
             // Envio de pedido de mapa: Mensagem de resposta do servidor 
             break;
         default:
@@ -235,7 +235,7 @@ void espera_servidor(){ // Loop de recebimento de comandos do servidor
     char msg[1];
 
     while(1) {
-        // Leitura serial. Comandos vindos do servidor devem começar com 'S'
+        // Leitura serial. Comandos vindos do servidor devem começar com "S"
         char_recebido = receber_caractere();
         if (char_recebido == 'S'){
             msg[0] = char_recebido
@@ -279,14 +279,9 @@ int main(void){
     /*while (1)
     {
 		PORTB &= ~(1 << 7);
-		
-		transmitir_caractere('A');
+		transmitir_string("EA1");
     }*/
 
     // Loop principal de escuta ao servidor
     espera_servidor();
 }
-
-
-
-
