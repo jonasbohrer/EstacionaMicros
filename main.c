@@ -80,6 +80,24 @@ void lcd_config(){
 	atraso_1650us();
 }
 
+void lcd_test(){
+	escrita_valor('J');
+	escrita_valor('O');
+	escrita_valor('N');
+	escrita_valor('A');
+	escrita_valor('S');
+	
+	escrita_comando(0xc0);
+	
+	escrita_valor('R'); 
+	escrita_valor('O');
+	escrita_valor('D');
+	escrita_valor('O');
+	escrita_valor('L');
+	escrita_valor('F');
+	escrita_valor('O');
+}
+
 void configurar_serial_19200(){
 	UCSR0C = 0x06; // 8-N-1
 	//Colocar 51 nos registradores de bit rate
@@ -99,12 +117,12 @@ void transmitir_caractere(char caractere){
 }
 
 void transmitir_string(char text[]){
-    for (i = 0; text[i] != 0; i++){
+    for (i = 0; text[i] != 0x00; i++){
         transmitir_caractere(text[i]);
     }
 }
 
-void send_msg(char msg){
+void enviar_msg(char msg){
 
     // Chama subrotinas para envios do microcontrolador
 
@@ -154,7 +172,7 @@ void send_msg(char msg){
     
 }
 
-void process_msg(char msg){
+void processar_msg(char msg){
 
     // Chama subrotinas de acordo com os envios do servidor
 
@@ -211,32 +229,42 @@ void process_msg(char msg){
 
 }
 
-void handle_vehicle(){
-    /*
-    * Para poder entrar no estacionamento o
-    motorista (cliente) irá parar seu carro a frente da
-    cancela, quando será lida sua placa. Um sensor
-    indica a presença de veículo na entrada.
-    * Seu sistema então pode autorizar a entrada
-    * Para tanto irá abrir a cancela e permitir sua
-    entrada e para que possa estacionar no interior
-    do recinto.
-    * O tempo de permanência do
-    veiculo no estacionamento definirá
-    o valor a ser pago na sua saída
+void espera_servidor(){ // Loop de recebimento de comandos do servidor
     
-    * O tempo máximo de permanência na frente da
-    cancela sem entrar não pode exceder 1 minuto.
-    * Se isto acontecer a cancela fecha e o cliente
-    deve se identificar de novo.
-    * Nos últimos 20 segundos antes de fechar a
-    cancela deve-se gerar uma informação visual
-    em LED (piscando 2 vezes por segundo)
-    */
+    char char_recebido;
+    char msg[1];
 
+    while(1) {
+        // Leitura serial. Comandos vindos do servidor devem começar com 'S'
+        char_recebido = receber_caractere();
+        if (char_recebido == 'S'){
+            msg[0] = char_recebido
+            msg[1] = receber_caractere();
+
+            // Continua o processamento da mensagem de acordo com o código de 2 bytes recebido
+            processar_msg(msg);
+        }
+    }
 }
 
 int main(void){
+
+    /*
+    * Para poder entrar no estacionamento o motorista (cliente) irá parar seu carro a frente da
+    cancela, quando será lida sua placa. Um sensor indica a presença de veículo na entrada.
+    * Seu sistema então pode autorizar a entrada
+    * Para tanto irá abrir a cancela e permitir sua entrada e para que possa estacionar no interior
+    do recinto.
+    * O tempo de permanência do veiculo no estacionamento definirá
+    o valor a ser pago na sua saída
+    
+    * O tempo máximo de permanência na frente da cancela sem entrar não pode exceder 1 minuto.
+    * Se isto acontecer a cancela fecha e o cliente deve se identificar de novo.
+    * Nos últimos 20 segundos antes de fechar a cancela deve-se gerar uma informação visual
+    em LED (piscando 2 vezes por segundo)
+    */
+
+    // Inicializações
 	DDRB = (1 << 7);
 	DDRG = (1 << 5);
 	DDRE = (1 << 5);
@@ -245,39 +273,18 @@ int main(void){
 	DDRJ = 0x03;
 	
 	lcd_config();
-	
-	escrita_valor('J');
-	escrita_valor('O');
-	escrita_valor('N');
-	escrita_valor('A');
-	escrita_valor('S');
-	
-	escrita_comando(0xc0);
-	
-	escrita_valor('R'); 
-	escrita_valor('O');
-	escrita_valor('D');
-	escrita_valor('O');
-	escrita_valor('L');
-	escrita_valor('F');
-	escrita_valor('O');
-	
+	lcd_test();
 	configurar_serial_19200();
-	
-    while (1)
+
+    /*while (1)
     {
 		PORTB &= ~(1 << 7);
 		
 		transmitir_caractere('A');
-    }
+    }*/
 
-	// Initializations
-    // Heartbeat
-    // Message listening
-    //while(1) {
-        // Serial decoding
-        // Message processing
-    //}
+    // Loop principal de escuta ao servidor
+    espera_servidor();
 }
 
 
