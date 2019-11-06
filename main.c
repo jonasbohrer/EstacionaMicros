@@ -70,6 +70,13 @@ void escrita_comando(char comando){
 	atraso_40us();
 }
 
+void escrita_texto(char texto[]){
+    int i;
+    for (i = 0; text[i] != 0x00; i++){
+        escrita_valor(text[i]);
+    }
+}
+
 void lcd_config(){
 	escrita_comando(0x38); //'00111000'
 	escrita_comando(0x38); //'00111000'
@@ -117,16 +124,20 @@ void transmitir_caractere(char caractere){
 }
 
 void transmitir_string(char text[]){
+    int i;
     for (i = 0; text[i] != 0x00; i++){
         transmitir_caractere(text[i]);
     }
 }
 
-void enviar_msg(char msg[]){
+void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
 
-    // Chama subrotinas para envios do microcontrolador
+    
+    comando[0] = data[0];
+    comando[1] = data[1];
+    comando[2] = 0x00;
 
-    switch(msg){
+    switch(comando){
         case "EB":
             // Mensagem de resposta do microcontrolador após efetivado pedido de bloqueio pelo servidor
             transmitir_string("EB");
@@ -197,10 +208,12 @@ void processar_msg(char msg){
                 //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
             break;
         case "SA":
-            // Envio de abertura de cancela: Mensagem de resposta do servidor 
+            // Envio de abertura de cancela: Mensagem de resposta do servidor
+            enviar_msg("EF1");
             break;
         case "SF":
-            // Envio de fechamento de cancela: Mensagem de resposta do servidor 
+            // Envio de fechamento de cancela: Mensagem de resposta do servidor
+            enviar_msg("EA1");
             break;
         case "SS":
             // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de saída ("2") 
