@@ -77,6 +77,15 @@ void escrita_texto(char texto[]){
     }
 }
 
+void port_config(){
+    DDRB = (1 << 7);
+	DDRG = (1 << 5);
+	DDRE = (1 << 5);
+	DDRD = 0x0F;
+	DDRH = 0x03;
+	DDRJ = 0x03;
+}
+
 void lcd_config(){
 	escrita_comando(0x38); //'00111000'
 	escrita_comando(0x38); //'00111000'
@@ -272,13 +281,7 @@ int main(void){
     */
 
     // Inicializações
-	DDRB = (1 << 7);
-	DDRG = (1 << 5);
-	DDRE = (1 << 5);
-	DDRD = 0x0F;
-	DDRH = 0x03;
-	DDRJ = 0x03;
-	
+    port_config();
 	lcd_config();
 	lcd_test();
 	configurar_serial_19200();
