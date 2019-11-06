@@ -132,117 +132,111 @@ void transmitir_string(char text[]){
 
 void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
 
-    
-    comando[0] = data[0];
-    comando[1] = data[1];
+    char comando[2];
+    comando[0] = msg[0];
+    comando[1] = msg[1];
     comando[2] = 0x00;
 
-    switch(comando){
-        case "EB":
-            // Mensagem de resposta do microcontrolador após efetivado pedido de bloqueio pelo servidor
-            transmitir_string("EB");
-            break;
-        case "ED":
-            // Mensagem de resposta do microcontrolador após efetivado pedido de desbloqueio pelo servidor
-            break;
-        case "EB":
-            // Mensagem de resposta do microcontrolador após efetivado evio de data/hora pelo servidor
-            break;
-        case "EO":
-            // Envio de sistema operando
-            break;
-        case "EN":
-            // Envio de novo carro: Mensagem de resposta do microcontrolador
-            break;
-        case "EA":
-            // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela "1" (entrada) ou "2" (saída) [EAn]
-            transmitir_string("EA1");
-            break;
-        case "EF":
-            // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela "1" (entrada) ou "2" (saída) [EFn]
-            transmitir_string("EF1");
-            break;
-        case "ES":
-            // Envio de carro saindo: Mensagem de resposta do microcontrolador
-            break;
-        case "EC":
-            // Envio de número do cartão: Mensagem enviada pelo microcontrolador para informar cartão digitado (Ex. “123456”)
-            break;
-        case "EP":
-            // Envio de pagamento: Mensagem enviada pelo microcontrolador para informar senha (Ex. “123456”) e valor a pagar (Ex 18,00)
-            break;
-        case "EI":
-            // Envio de impressão de nota: Mensagem enviada pelo microcontrolador para imprimir nota fiscal
-            break;
-        case "EM":
-            // Envio de pedido de mapa: Mensagem enviada pelo microcontrolador para solicitar mapa de ocupação
-            break;
-        default:
-            break;
+    if (strcmp(comando, "EB") == 0) {
+        // Mensagem de resposta do microcontrolador após efetivado pedido de bloqueio pelo servidor
+        transmitir_string("EB");
+    }
+    else if (strcmp(comando, "ED") == 0) {
+        // Mensagem de resposta do microcontrolador após efetivado pedido de desbloqueio pelo servidor
+    }
+    else if (strcmp(comando, "EH") == 0) {
+        // Mensagem de resposta do microcontrolador após efetivado evio de data/hora pelo servidor
+    }
+    else if (strcmp(comando, "EO") == 0) {
+        // Envio de sistema operando
+    }
+    else if (strcmp(comando, "EN") == 0) {
+        // Envio de novo carro: Mensagem de resposta do microcontrolador
+    }
+    else if (strcmp(comando, "EA") == 0) {
+        // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela "1" (entrada) ou "2" (saída) [EAn]
+        transmitir_string("EA1");
+    }
+    else if (strcmp(comando, "EF") == 0) {
+        // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela "1" (entrada) ou "2" (saída) [EFn]
+        transmitir_string("EF1");
+    }
+    else if (strcmp(comando, "ES") == 0) {
+        // Envio de carro saindo: Mensagem de resposta do microcontrolador
+    }
+    else if (strcmp(comando, "EC") == 0) {
+        // Envio de número do cartão: Mensagem enviada pelo microcontrolador para informar cartão digitado (Ex. “123456”)
+    }
+    else if (strcmp(comando, "EP") == 0) {
+        // Envio de pagamento: Mensagem enviada pelo microcontrolador para informar senha (Ex. “123456”) e valor a pagar (Ex 18,00)
+    }
+    else if (strcmp(comando, "EI") == 0) {
+        // Envio de impressão de nota: Mensagem enviada pelo microcontrolador para imprimir nota fiscal
+    }
+    else if (strcmp(comando, "EM") == 0) {
+        // Envio de pedido de mapa: Mensagem enviada pelo microcontrolador para solicitar mapa de ocupação
     }
     
 }
 
-void processar_msg(char msg){
+void processar_msg(char msg){ // Chama subrotinas de acordo com os envios do servidor
+    char comando[2];
+    comando[0] = msg[0];
+    comando[1] = msg[1];
+    comando[2] = 0x00;
 
-    // Chama subrotinas de acordo com os envios do servidor
-
-    switch (msg){
-        case "SB":
-            // Bloqueio: Mensagem enviada pelo servidor para bloquear sistema
-            // Neste caso deve-se exibir a mensagem “DESLIGADO!”
-            // Só volta a funcionar se o aplicativo de servidor externo liberar o sistema.
-            // Microcontrolador deve responder "EB"
-            {
-                escrita_texto("DESLIGADO!")
-                break;
-            }
-        case "SD":
-            // Desbloqueio: Mensagem enviada pelo servidor para desbloquear sistema
+    if (strcmp(comando, "SB") == 0){
+        // Bloqueio: Mensagem enviada pelo servidor para bloquear sistema
+        // Neste caso deve-se exibir a mensagem “DESLIGADO!”
+        // Só volta a funcionar se o aplicativo de servidor externo liberar o sistema.
+        // Microcontrolador deve responder "EB"
+        
+            escrita_texto("DESLIGADO!")
             break;
-        case "SH":
-            // Envio de data e horário: Mensagem enviada pelo servidor para informar data e horário
-            break;
-        case "SN":
-            // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ("1") de saída ("2")
-                //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
-            break;
-        case "SA":
-            // Envio de abertura de cancela: Mensagem de resposta do servidor
-            enviar_msg("EF1");
-            break;
-        case "SF":
-            // Envio de fechamento de cancela: Mensagem de resposta do servidor
-            enviar_msg("EA1");
-            break;
-        case "SS":
-            // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de saída ("2") 
-            break;
-        case "SC":
-            // Envio de número do cartão: Mensagem de resposta do servidor 
-                // Caso cartão enviado não exista
-                // Informação de nome do titular do cartão
-            break;
-        case "SP":
-            // Envio de pagamento: Mensagem de resposta do servidor 
-                // Tipos de mensagem de resposta do servidor de envio de pagamento
-                    //Caso senha informada
-                    //Caso saldo do cartão seja insuficiente não confira
-                    //Resposta confirmando pagamento
-            break;
-        case "SI":
-            // Envio de impressão de nota: Mensagem de resposta do servidor 
-            break;
-        case "SM":
-            // Envio de pedido de mapa: Mensagem de resposta do servidor 
-            break;
-        default:
-            break;
+    }
+    else if (strcmp(comando, "SD") == 0){
+        // Desbloqueio: Mensagem enviada pelo servidor para desbloquear sistema
+    }
+    else if (strcmp(comando, "SH") == 0){
+        // Envio de data e horário: Mensagem enviada pelo servidor para informar data e horário
+    }
+    else if (strcmp(comando, "SN") == 0){
+        // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ("1") de saída ("2")
+            //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
+    }
+    else if (strcmp(comando, "SA") == 0){
+        // Envio de abertura de cancela: Mensagem de resposta do servidor
+        enviar_msg("EF1");
+    }
+    else if (strcmp(comando, "SF") == 0){
+        // Envio de fechamento de cancela: Mensagem de resposta do servidor
+        enviar_msg("EA1");
+    }
+    else if (strcmp(comando, "SS") == 0){
+        // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de saída ("2") 
+    }
+    else if (strcmp(comando, "SC") == 0){
+        // Envio de número do cartão: Mensagem de resposta do servidor 
+            // Caso cartão enviado não exista
+            // Informação de nome do titular do cartão
+    }
+    else if (strcmp(comando, "SP") == 0){
+        // Envio de pagamento: Mensagem de resposta do servidor 
+            // Tipos de mensagem de resposta do servidor de envio de pagamento
+                //Caso senha informada
+                //Caso saldo do cartão seja insuficiente não confira
+                //Resposta confirmando pagamento
+    }
+    else if (strcmp(comando, "SI") == 0){
+        // Envio de impressão de nota: Mensagem de resposta do servidor 
+    }
+    else if (strcmp(comando, "SM") == 0){
+        // Envio de pedido de mapa: Mensagem de resposta do servidor 
     }
 
 }
 
-void espera_servidor(){ // Loop de recebimento de comandos do servidor
+void espera_servidor(){ // Loop de recepção de comandos do servidor
     
     char char_recebido;
     char msg[1];
