@@ -19,22 +19,24 @@ typedef struct Carro
 
 int ativo;
 int temporizador;
+int sinalDeVida;
 Carro *carros[tamanhoEstacionamento];
-
-ISR (TIMER1_OVF_vect) // InterrupÃ§Ã£o timer1
-{
-	temporizador++;
-	TCNT1 = 63974; // 1 seg em 16MHz
-}
 
 void init_timer1(){
     temporizador = 0; // Zera temporizador
-    TCNT1 = 63974; // 1 seg em 16MHz
+    TCNT1 = 49911; // 1 seg em 16MHz
 
 	TCCR1A = 0x00;
 	TCCR1B = (1<<CS10) | (1<<CS12); // prescaler de 1024
-	TIMSK = (1 << TOIE1) ; // Liga interrupÃ§Ã£o por overflow
-	sei(); // Permite interrupÃ§Ãµes globais
+	TIMSK1 = (1 << TOIE1) ; // Liga interrupção por overflow
+	sei(); // Permite interrupções globais
+}
+
+
+ISR (TIMER1_OVF_vect) // Interrupção timer1
+{
+	temporizador++;
+	TCNT1 = 49911; // 1 seg em 16MHz
 }
 
 void atraso_40us(){
@@ -101,7 +103,6 @@ void escrita_comando(char comando){
 	atraso_40us();
 }
 
-
 void port_config(){
 	DDRG = (1 << 5);
 	DDRE = (1 << 5);
@@ -115,6 +116,7 @@ void limpar_display()
 	escrita_comando(0x01); //'00000001'
 	atraso_1650us();
 }
+
 
 void lcd_config(){
 	escrita_comando(0x38); //'00111000'
@@ -185,6 +187,26 @@ void transmitir_string(char text[]){
     }
 }
 
+int espera_msg_servidor(char msg[], int tempo){
+
+	// Se o tempo for válido, inicia o timer
+	if (tempo <= 0) {
+		init_timer1();
+	}
+	// Espera pelo comando enquanto o temporizador não estourar
+	while(!(temporizador >= tempo)) {
+		if (receber_caractere() == msg[0]){
+			if (receber_caractere() == msg[1]){
+				//processar_msg(msg);
+				TCCR1B = 0; //Desliga temporizador
+				return 1;
+			}
+		}
+	}
+	TCCR1B = 0; //Desliga temporizador
+	return NULL;
+}
+
 void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
 
     char comando[3];
@@ -193,24 +215,26 @@ void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
     comando[2] = 0x00;
 
     if (strcmp(comando, "EB") == 0) {
-        // Mensagem de resposta do microcontrolador apï¿½s efetivado pedido de bloqueio pelo servidor
+        // Mensagem de resposta do microcontrolador ap?s efetivado pedido de bloqueio pelo servidor
         transmitir_string("EB");
     }
     else if (strcmp(comando, "ED") == 0) {
-        // Mensagem de resposta do microcontrolador apï¿½s efetivado pedido de desbloqueio pelo servidor
+        // Mensagem de resposta do microcontrolador ap?s efetivado pedido de desbloqueio pelo servidor
 		transmitir_string("ED");
     }
     else if (strcmp(comando, "EH") == 0) {
-        // Mensagem de resposta do microcontrolador apï¿½s efetivado evio de data/hora pelo servidor
+        // Mensagem de resposta do microcontrolador ap?s efetivado evio de data/hora pelo servidor
     }
     else if (strcmp(comando, "EO") == 0) {
         // Envio de sistema operando
+		transmitir_string("EO");
     }
     else if (strcmp(comando, "EN") == 0) {
         // Envio de novo carro: Mensagem de resposta do microcontrolador
+		transmitir_string("EN");
     }
     else if (strcmp(comando, "EA") == 0) {
-        // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela "1" (entrada) ou "2" (saï¿½da) [EAn]
+        // Envio de abertura de cancela: Mensagem enviada pelo microcontrolador para pedir abertura da cancela "1" (entrada) ou "2" (sa?da) [EAn]
 		if (msg[2]=='1')
 		{
 			transmitir_string("EA1");
@@ -221,23 +245,24 @@ void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
 		}
     }
     else if (strcmp(comando, "EF") == 0) {
-        // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela "1" (entrada) ou "2" (saï¿½da) [EFn]
+        // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela "1" (entrada) ou "2" (sa?da) [EFn]
         transmitir_string("EF1");
     }
     else if (strcmp(comando, "ES") == 0) {
         // Envio de carro saindo: Mensagem de resposta do microcontrolador
+		transmitir_string("ES");
     }
     else if (strcmp(comando, "EC") == 0) {
-        // Envio de nï¿½mero do cartï¿½o: Mensagem enviada pelo microcontrolador para informar cartï¿½o digitado (Ex. ï¿½123456ï¿½)
+        // Envio de n?mero do cart?o: Mensagem enviada pelo microcontrolador para informar cart?o digitado (Ex. ?123456?)
     }
     else if (strcmp(comando, "EP") == 0) {
-        // Envio de pagamento: Mensagem enviada pelo microcontrolador para informar senha (Ex. ï¿½123456ï¿½) e valor a pagar (Ex 18,00)
+        // Envio de pagamento: Mensagem enviada pelo microcontrolador para informar senha (Ex. ?123456?) e valor a pagar (Ex 18,00)
     }
     else if (strcmp(comando, "EI") == 0) {
-        // Envio de impressï¿½o de nota: Mensagem enviada pelo microcontrolador para imprimir nota fiscal
+        // Envio de impress?o de nota: Mensagem enviada pelo microcontrolador para imprimir nota fiscal
     }
     else if (strcmp(comando, "EM") == 0) {
-        // Envio de pedido de mapa: Mensagem enviada pelo microcontrolador para solicitar mapa de ocupaï¿½ï¿½o
+        // Envio de pedido de mapa: Mensagem enviada pelo microcontrolador para solicitar mapa de ocupa??o
     }
     
 }
@@ -250,8 +275,8 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
 
     if (strcmp(comando, "SB") == 0){
         // Bloqueio: Mensagem enviada pelo servidor para bloquear sistema
-        // Neste caso deve-se exibir a mensagem ï¿½DESLIGADO!ï¿½
-        // Sï¿½ volta a funcionar se o aplicativo de servidor externo liberar o sistema.
+        // Neste caso deve-se exibir a mensagem ?DESLIGADO!?
+        // S? volta a funcionar se o aplicativo de servidor externo liberar o sistema.
         // Microcontrolador deve responder "EB"
         
         escrita_texto("DESLIGADO!");
@@ -266,16 +291,16 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
 		enviar_msg("ED");
     }
     else if (strcmp(comando, "SH") == 0){
-        // Envio de data e horï¿½rio: Mensagem enviada pelo servidor para informar data e horï¿½rio
+        // Envio de data e hor?rio: Mensagem enviada pelo servidor para informar data e hor?rio
     }
     else if (strcmp(comando, "SN") == 0){
-        // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ("1") de saï¿½da ("2")
+        // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ("1") de sa?da ("2")
         // Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
 		char estado = receber_caractere();
         // Se carro na cancela de entrada
 		if (estado == '1') 
 		{
-            // Se o sistema mandou a placa quer dizer que existe lugar para o carro, entï¿½o deve-se anotar a placa e liberar a cancela
+            // Se o sistema mandou a placa quer dizer que existe lugar para o carro, ent?o deve-se anotar a placa e liberar a cancela
             char placa[7];
             placa[0]=receber_caractere();
             placa[1]=receber_caractere();
@@ -286,7 +311,8 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
             placa[6]=receber_caractere();
             placa[7]=receber_caractere(); //Limpa o /0
 
-            //Assume que a placa Ã© vÃ¡lida
+            //Assume que a placa é válida
+			enviar_msg("EN"); //Resposta da mensagem anterior
             //Envia msg para abrir a cancela
 			enviar_msg("EA1"); 
             //Espera pela msg do servidor "SA" indicando abertura da cancela 
@@ -296,17 +322,19 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
             if (espera_msg_servidor("SS", 60) != NULL) {
                 //Se ele saiu, armazena a placa e a hora.
                 
-                //Coleta a placa novamente (aqui pode ser feita uma verificÃ§Ã£o de consistÃªncia entre as duas placas. Devem ser iguais, mas nÃ£o Ã© especificado no projeto esse caso de erro)
-                char placa[7];
-                placa[0]=receber_caractere();
-                placa[1]=receber_caractere();
-                placa[2]=receber_caractere();
-                placa[3]=receber_caractere();
-                placa[4]=receber_caractere();
-                placa[5]=receber_caractere();
-                placa[6]=receber_caractere();
-                placa[7]=receber_caractere(); //Limpa o /0
+                //Coleta a placa novamente (aqui pode ser feita uma verificção de consistência entre as duas placas. Devem ser iguais, mas não é especificado no projeto esse caso de erro)
+                char placa2[7];
+                placa2[0]=receber_caractere();
+                placa2[1]=receber_caractere();
+                placa2[2]=receber_caractere();
+                placa2[3]=receber_caractere();
+                placa2[4]=receber_caractere();
+                placa2[5]=receber_caractere();
+                placa2[6]=receber_caractere();
+                placa2[7]=receber_caractere(); //Limpa o /0
                 
+				enviar_msg("ES"); //Resoista da mensagem anterior
+				
                 //Salva a placa
                 for (int i=0; i<tamanhoEstacionamento; i++) {
                     if(carros[i] == NULL){
@@ -321,23 +349,23 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
                         break;
                     }
                 }
-
+				/*
                 //Testa se salvou a placa
                 limpar_display();
                 for (int i=0; i<tamanhoEstacionamento; i++) {
                     if(!(carros[i] == NULL)) {
                         escrita_valor(carros[i]->numeros[3]);
                     }
-                }
+                }*/
             } 
             //Envia mensagem para fechar a cancela.
             enviar_msg("EF1");
             //Espera pela msg do servidor "SA" indicando fechamento da cancela 
             espera_msg_servidor("SF", 0);
 		}
-        // Se carro na cancela de saÃ­da
+        // Se carro na cancela de saída
         else if (estado == '2') {
-            // Gerencia a saÃ­da do carro
+            // Gerencia a saída do carro
         }
     }
     else if (strcmp(comando, "SA") == 0){
@@ -349,22 +377,22 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
         //enviar_msg("EA1");
     }
     else if (strcmp(comando, "SS") == 0){
-        // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de saï¿½da ("2") 
+        // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de sa?da ("2") 
     }
     else if (strcmp(comando, "SC") == 0){
-        // Envio de nï¿½mero do cartï¿½o: Mensagem de resposta do servidor 
-            // Caso cartï¿½o enviado nï¿½o exista
-            // Informaï¿½ï¿½o de nome do titular do cartï¿½o
+        // Envio de n?mero do cart?o: Mensagem de resposta do servidor 
+            // Caso cart?o enviado n?o exista
+            // Informa??o de nome do titular do cart?o
     }
     else if (strcmp(comando, "SP") == 0){
         // Envio de pagamento: Mensagem de resposta do servidor 
             // Tipos de mensagem de resposta do servidor de envio de pagamento
                 //Caso senha informada
-                //Caso saldo do cartï¿½o seja insuficiente nï¿½o confira
+                //Caso saldo do cart?o seja insuficiente n?o confira
                 //Resposta confirmando pagamento
     }
     else if (strcmp(comando, "SI") == 0){
-        // Envio de impressï¿½o de nota: Mensagem de resposta do servidor 
+        // Envio de impress?o de nota: Mensagem de resposta do servidor 
     }
     else if (strcmp(comando, "SM") == 0){
         // Envio de pedido de mapa: Mensagem de resposta do servidor 
@@ -372,18 +400,45 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
 
 }
 
-void espera_servidor(){ // Loop de recepï¿½ï¿½o de comandos do servidor
+void enviar_sinal_vida()
+{
+	enviar_msg("EO");
+}
+
+void init_timer5(){
+	enviar_sinal_vida();
+	sinalDeVida = 0; // Zera tempo
+	TCNT5 = 49911; // 1 seg em 16MHz
+
+	TCCR5A = 0x00;
+	TCCR5B = (1<<CS10) | (1<<CS12); // prescaler de 1024
+	TIMSK5 = (1 << TOIE1) ; // Liga interrupção por overflow
+	sei(); // Permite interrupções globais
+}
+
+ISR (TIMER5_OVF_vect) // Interrupção timer1
+{
+	sinalDeVida++;
+	TCNT5 = 49911; // 1 seg em 16MHz
+	if(sinalDeVida>=29)
+	{
+		sinalDeVida=0;
+		enviar_sinal_vida();
+	}
+}
+
+void espera_servidor(){ // Loop de recep??o de comandos do servidor
     
     char char_recebido;
     char msg[1];
 
     while(1) {
-		// Leitura serial. Comandos vindos do servidor devem comeï¿½ar com "S"
+		// Leitura serial. Comandos vindos do servidor devem come?ar com "S"
 		char_recebido = receber_caractere();
         if (char_recebido == 'S'){
             msg[0] = char_recebido;
             msg[1] = receber_caractere();
-			// Continua o processamento da mensagem de acordo com o cï¿½digo de 2 bytes recebido
+			// Continua o processamento da mensagem de acordo com o c?digo de 2 bytes recebido
 			if((ativo==1) || (msg[1]=='D')){
 				processar_msg(msg);
 			}
@@ -391,51 +446,30 @@ void espera_servidor(){ // Loop de recepï¿½ï¿½o de comandos do servidor
     }
 }
 
-int espera_msg_servidor(char msg[], int tempo){ // Loop de recepï¿½ï¿½o de comandos do servidor
-    
-    char char_recebido;
-    char msg[1];
-
-    // Se o tempo for vÃ¡lido, inicia o timer
-    if (tempo <= 0) {
-        init_timer1();
-    }
-    // Espera pelo comando enquanto o temporizador nÃ£o estourar
-    while(!(temporizador >= tempo)) {
-        if (receber_caractere() == msg[0]){
-            if (receber_caractere() == msg[1]){
-                //processar_msg(msg);
-                return 1;
-            }
-        }
-    }
-    return NULL;
-}
-
 int main(void){
 
     /*
-    * Para poder entrar no estacionamento o motorista (cliente) irï¿½ parar seu carro a frente da
-    cancela, quando serï¿½ lida sua placa. Um sensor indica a presenï¿½a de veï¿½culo na entrada.
-    * Seu sistema entï¿½o pode autorizar a entrada
-    * Para tanto irï¿½ abrir a cancela e permitir sua entrada e para que possa estacionar no interior
+    * Para poder entrar no estacionamento o motorista (cliente) ir? parar seu carro a frente da
+    cancela, quando ser? lida sua placa. Um sensor indica a presen?a de ve?culo na entrada.
+    * Seu sistema ent?o pode autorizar a entrada
+    * Para tanto ir? abrir a cancela e permitir sua entrada e para que possa estacionar no interior
     do recinto.
-    * O tempo de permanï¿½ncia do veiculo no estacionamento definirï¿½
-    o valor a ser pago na sua saï¿½da
+    * O tempo de perman?ncia do veiculo no estacionamento definir?
+    o valor a ser pago na sua sa?da
     
-    * O tempo mï¿½ximo de permanï¿½ncia na frente da cancela sem entrar nï¿½o pode exceder 1 minuto.
+    * O tempo m?ximo de perman?ncia na frente da cancela sem entrar n?o pode exceder 1 minuto.
     * Se isto acontecer a cancela fecha e o cliente deve se identificar de novo.
-    * Nos ï¿½ltimos 20 segundos antes de fechar a cancela deve-se gerar uma informaï¿½ï¿½o visual
+    * Nos ?ltimos 20 segundos antes de fechar a cancela deve-se gerar uma informa??o visual
     em LED (piscando 2 vezes por segundo)
     */
 
-    // Inicializaï¿½ï¿½es
+    // Inicializa??es
 	ativo=1;
     port_config();
 	configurar_contraste_lcd();
 	lcd_config();
 	configurar_serial_19200();
-
+	init_timer5(); //inicia sinal de vida
     // Loop principal de escuta ao servidor
     espera_servidor();
 }
