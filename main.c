@@ -18,7 +18,24 @@ typedef struct Carro
 } Carro;
 
 int ativo;
+int temporizador;
 Carro *carros[tamanhoEstacionamento];
+
+ISR (TIMER1_OVF_vect) // Interrupção timer1
+{
+	temporizador++;
+	TCNT1 = 63974; // 1 seg em 16MHz
+}
+
+void init_timer1(){
+    temporizador = 0; // Zera temporizador
+    TCNT1 = 63974; // 1 seg em 16MHz
+
+	TCCR1A = 0x00;
+	TCCR1B = (1<<CS10) | (1<<CS12); // prescaler de 1024
+	TIMSK = (1 << TOIE1) ; // Liga interrupção por overflow
+	sei(); // Permite interrupções globais
+}
 
 void atraso_40us(){
 	// initialize timer
@@ -253,44 +270,83 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
     }
     else if (strcmp(comando, "SN") == 0){
         // Envio de novo carro: Mensagem do servidor para informar novo carro que chegou na cancela de entrada ("1") de sa�da ("2")
-        //Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
+        // Mensagem enviada pelo servidor para informar novo carro de idoso ou especial (sufixo "IDE")
 		char estado = receber_caractere();
-		if (estado == '1') //Carro na canela de entrada
+        // Se carro na cancela de entrada
+		if (estado == '1') 
 		{
-			for (int i=0; i<tamanhoEstacionamento; i++) //Se o sistema mandou a placa quer dizer que existe lugar para o carro, ent�o deve-se anotar a placa e liberar a cancela
-			{
-				if(carros[i] == NULL)
-				{
-					carros[i] = malloc(sizeof(Carro));
-                    carros[i]->letras[0]=receber_caractere();
-                    carros[i]->letras[1]=receber_caractere();
-                    carros[i]->letras[2]=receber_caractere();
-                    carros[i]->numeros[0]=receber_caractere();
-                    carros[i]->numeros[1]=receber_caractere();
-                    carros[i]->numeros[2]=receber_caractere();
-                    carros[i]->numeros[3]=receber_caractere();
-					break;
-				}
-			}
-			enviar_msg("EA1");
-			limpar_display();
-			for (int i=0; i<tamanhoEstacionamento; i++) //teste
-			{
-				if(!(carros[i] == NULL))
-				{
-					escrita_valor(carros[i]->numeros[3]);
-				}
-			}
-			
+            // Se o sistema mandou a placa quer dizer que existe lugar para o carro, ent�o deve-se anotar a placa e liberar a cancela
+            char placa[7];
+            placa[0]=receber_caractere();
+            placa[1]=receber_caractere();
+            placa[2]=receber_caractere();
+            placa[3]=receber_caractere();
+            placa[4]=receber_caractere();
+            placa[5]=receber_caractere();
+            placa[6]=receber_caractere();
+            placa[7]=receber_caractere(); //Limpa o /0
+
+            //Assume que a placa é válida
+            //Envia msg para abrir a cancela
+			enviar_msg("EA1"); 
+            //Espera pela msg do servidor "SA" indicando abertura da cancela 
+            espera_msg_servidor("SA", 0);
+
+            //Espera por no max 60s msg do servidor avisando que o carro saiu da cancela 1
+            if (espera_msg_servidor("SS", 60) != NULL) {
+                //Se ele saiu, armazena a placa e a hora.
+                
+                //Coleta a placa novamente (aqui pode ser feita uma verificção de consistência entre as duas placas. Devem ser iguais, mas não é especificado no projeto esse caso de erro)
+                char placa[7];
+                placa[0]=receber_caractere();
+                placa[1]=receber_caractere();
+                placa[2]=receber_caractere();
+                placa[3]=receber_caractere();
+                placa[4]=receber_caractere();
+                placa[5]=receber_caractere();
+                placa[6]=receber_caractere();
+                placa[7]=receber_caractere(); //Limpa o /0
+                
+                //Salva a placa
+                for (int i=0; i<tamanhoEstacionamento; i++) {
+                    if(carros[i] == NULL){
+                        carros[i] = malloc(sizeof(Carro));
+                        carros[i]->letras[0]=placa[0];
+                        carros[i]->letras[1]=placa[1];
+                        carros[i]->letras[2]=placa[2];
+                        carros[i]->numeros[0]=placa[3];
+                        carros[i]->numeros[1]=placa[4];
+                        carros[i]->numeros[2]=placa[5];
+                        carros[i]->numeros[3]=placa[6];
+                        break;
+                    }
+                }
+
+                //Testa se salvou a placa
+                limpar_display();
+                for (int i=0; i<tamanhoEstacionamento; i++) {
+                    if(!(carros[i] == NULL)) {
+                        escrita_valor(carros[i]->numeros[3]);
+                    }
+                }
+            } 
+            //Envia mensagem para fechar a cancela.
+            enviar_msg("EF1");
+            //Espera pela msg do servidor "SA" indicando fechamento da cancela 
+            espera_msg_servidor("SF", 0);
 		}
+        // Se carro na cancela de saída
+        else if (estado == '2') {
+            // Gerencia a saída do carro
+        }
     }
     else if (strcmp(comando, "SA") == 0){
         // Envio de abertura de cancela: Mensagem de resposta do servidor
-        enviar_msg("EA1");
+        //enviar_msg("EF1");
     }
     else if (strcmp(comando, "SF") == 0){
         // Envio de fechamento de cancela: Mensagem de resposta do servidor
-        enviar_msg("EF");
+        //enviar_msg("EA1");
     }
     else if (strcmp(comando, "SS") == 0){
         // Envio de carro saindo: Mensagem do servidor para informar novo carro que saiu da cancela de entrada ("1") de sa�da ("2") 
@@ -335,6 +391,27 @@ void espera_servidor(){ // Loop de recep��o de comandos do servidor
     }
 }
 
+int espera_msg_servidor(char msg[], int tempo){ // Loop de recep��o de comandos do servidor
+    
+    char char_recebido;
+    char msg[1];
+
+    // Se o tempo for válido, inicia o timer
+    if (tempo <= 0) {
+        init_timer1();
+    }
+    // Espera pelo comando enquanto o temporizador não estourar
+    while(!(temporizador >= tempo)) {
+        if (receber_caractere() == msg[0]){
+            if (receber_caractere() == msg[1]){
+                //processar_msg(msg);
+                return 1;
+            }
+        }
+    }
+    return NULL;
+}
+
 int main(void){
 
     /*
@@ -357,14 +434,7 @@ int main(void){
     port_config();
 	configurar_contraste_lcd();
 	lcd_config();
-	//lcd_test();
 	configurar_serial_19200();
-
-    /*while (1)
-    {
-		PORTB &= ~(1 << 7);
-		transmitir_string("EA1");
-    }*/
 
     // Loop principal de escuta ao servidor
     espera_servidor();
