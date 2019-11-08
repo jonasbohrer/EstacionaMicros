@@ -18,26 +18,13 @@ typedef struct Carro
 } Carro;
 
 int ativo;
-int temporizador;
+int carroNaCancela; //Avisa se tem carro esperando na cancela
+int tempoParaSair; //tempo para carro sair
+int seguraCancela;
 int sinalDeVida;
 Carro *carros[tamanhoEstacionamento];
 
-void init_timer1(){
-    temporizador = 0; // Zera temporizador
-    TCNT1 = 49911; // 1 seg em 16MHz
 
-	TCCR1A = 0x00;
-	TCCR1B = (1<<CS10) | (1<<CS12); // prescaler de 1024
-	TIMSK1 = (1 << TOIE1) ; // Liga interrupção por overflow
-	sei(); // Permite interrupções globais
-}
-
-
-ISR (TIMER1_OVF_vect) // Interrupção timer1
-{
-	temporizador++;
-	TCNT1 = 49911; // 1 seg em 16MHz
-}
 
 void atraso_40us(){
 	// initialize timer
@@ -170,7 +157,12 @@ void configurar_serial_19200(){
 }
 
 char receber_caractere(void) {
-    while(!(UCSR0A & (1<<RXC0)));
+    while(!(UCSR0A & (1<<RXC0))){
+		if(tempoParaSair>60)
+		{
+			return NULL;
+		}	
+	}
 	//escrita_valor(UDR0);
     return UDR0;
 }
@@ -187,24 +179,47 @@ void transmitir_string(char text[]){
     }
 }
 
+void ativa_tempo_para_sair(){
+	tempoParaSair = 0; // Zera temporizador
+	carroNaCancela = 1;
+}
+
 int espera_msg_servidor(char msg[], int tempo){
 
 	// Se o tempo for válido, inicia o timer
-	if (tempo <= 0) {
-		init_timer1();
+	if (tempo > 0) {
+		ativa_tempo_para_sair();
 	}
 	// Espera pelo comando enquanto o temporizador não estourar
-	while(!(temporizador >= tempo)) {
+	while(!(tempoParaSair >= tempo)) {
 		if (receber_caractere() == msg[0]){
-			if (receber_caractere() == msg[1]){
+			if (!(msg[0] == NULL) && (receber_caractere() == msg[1])){
 				//processar_msg(msg);
-				TCCR1B = 0; //Desliga temporizador
+				carroNaCancela=0; //Desliga contador de tempo
 				return 1;
 			}
 		}
 	}
-	TCCR1B = 0; //Desliga temporizador
+	carroNaCancela=0; //Desliga contador de tempo
 	return NULL;
+}
+
+void init_timer3(){
+	seguraCancela = 0; // Zera temporizador
+	TCNT3 = 49911; // 1 seg em 16MHz
+
+	TCCR3A = 0x00;
+	TCCR3B = 0x00;
+	TCCR3B = (1<<CS30) | (1<<CS32); // prescaler de 1024
+	TIMSK3 = (1 << TOIE3) ; // Liga interrupção por overflow
+	sei(); // Permite interrupções globais
+}
+
+
+ISR (TIMER3_OVF_vect) // Interrupção timer1
+{
+	seguraCancela++;
+	TCNT3 = 49911; // 1 seg em 16MHz
 }
 
 void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
@@ -246,7 +261,14 @@ void enviar_msg(char msg[]){ // Chama subrotinas para envios do microcontrolador
     }
     else if (strcmp(comando, "EF") == 0) {
         // Envio de fechamento de cancela: Mensagem enviada pelo microcontrolador para pedir fechamento da cancela "1" (entrada) ou "2" (sa?da) [EFn]
-        transmitir_string("EF1");
+        if (msg[2]=='1')
+        {
+	        transmitir_string("EF1");
+        }
+        else if (msg[2]=='2')
+        {
+	        transmitir_string("EF2");
+        }
     }
     else if (strcmp(comando, "ES") == 0) {
         // Envio de carro saindo: Mensagem de resposta do microcontrolador
@@ -333,7 +355,7 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
                 placa2[6]=receber_caractere();
                 placa2[7]=receber_caractere(); //Limpa o /0
                 
-				enviar_msg("ES"); //Resoista da mensagem anterior
+				enviar_msg("ES"); //Resposta da mensagem anterior
 				
                 //Salva a placa
                 for (int i=0; i<tamanhoEstacionamento; i++) {
@@ -349,15 +371,23 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
                         break;
                     }
                 }
-				/*
-                //Testa se salvou a placa
-                limpar_display();
-                for (int i=0; i<tamanhoEstacionamento; i++) {
-                    if(!(carros[i] == NULL)) {
-                        escrita_valor(carros[i]->numeros[3]);
-                    }
-                }*/
-            } 
+				
+				init_timer3();
+				while(seguraCancela<1)
+				{
+					limpar_display();
+				}
+				seguraCancela=0;
+            }
+			
+			
+			//Testa se salvou a placa
+			limpar_display();
+			for (int i=0; i<tamanhoEstacionamento; i++) {
+				if(!(carros[i] == NULL)) {
+					escrita_valor(carros[i]->numeros[3]);
+				}
+			}
             //Envia mensagem para fechar a cancela.
             enviar_msg("EF1");
             //Espera pela msg do servidor "SA" indicando fechamento da cancela 
@@ -366,6 +396,65 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
         // Se carro na cancela de saída
         else if (estado == '2') {
             // Gerencia a saída do carro
+			char placa[7];
+			placa[0]=receber_caractere();
+			placa[1]=receber_caractere();
+			placa[2]=receber_caractere();
+			placa[3]=receber_caractere();
+			placa[4]=receber_caractere();
+			placa[5]=receber_caractere();
+			placa[6]=receber_caractere();
+			placa[7]=receber_caractere(); //Limpa o /0
+			
+			//Assume que a placa é válida
+			enviar_msg("EN"); //Resposta da mensagem anterior
+			//Envia msg para abrir a cancela
+			enviar_msg("EA2");
+			//Espera pela msg do servidor "SA" indicando abertura da cancela
+			espera_msg_servidor("SA", 0);
+
+			//Espera por no max 60s msg do servidor avisando que o carro saiu da cancela 1
+			if (espera_msg_servidor("SS", 60) != NULL) {
+				//Se ele saiu, armazena a placa e a hora.
+				
+				//Coleta a placa novamente (aqui pode ser feita uma verificção de consistência entre as duas placas. Devem ser iguais, mas não é especificado no projeto esse caso de erro)
+				char placa2[7];
+				placa2[0]=receber_caractere();
+				placa2[1]=receber_caractere();
+				placa2[2]=receber_caractere();
+				placa2[3]=receber_caractere();
+				placa2[4]=receber_caractere();
+				placa2[5]=receber_caractere();
+				placa2[6]=receber_caractere();
+				placa2[7]=receber_caractere(); //Limpa o /0
+				
+				enviar_msg("ES"); //Resposta da mensagem anterior
+				for (int i=0; i<tamanhoEstacionamento; i++) {
+					if(!(carros[i] == NULL)) {
+						if((carros[i]->letras[0] == placa[0]) && (carros[i]->letras[1] == placa[1]) && (carros[i]->letras[2] == placa[2]) && (carros[i]->numeros[0] == placa[3]) && (carros[i]->numeros[1] == placa[4]) && ((carros[i]->numeros[2] == placa[5])) && (carros[i]->numeros[3] == placa[6])){
+							carros[i] = NULL;
+						}
+					}
+				}
+				init_timer3();
+				while(seguraCancela<2)
+				{
+					limpar_display();
+				}
+				seguraCancela=0;
+			}
+			
+			//Testa se salvou a placa
+			limpar_display();
+			for (int i=0; i<tamanhoEstacionamento; i++) {
+				if(!(carros[i] == NULL)) {
+					escrita_valor(carros[i]->numeros[3]);
+				}
+			}
+			//Envia mensagem para fechar a cancela.
+			enviar_msg("EF2");
+			//Espera pela msg do servidor "SA" indicando fechamento da cancela
+			espera_msg_servidor("SF", 0);
         }
     }
     else if (strcmp(comando, "SA") == 0){
@@ -411,7 +500,7 @@ void init_timer5(){
 	TCNT5 = 49911; // 1 seg em 16MHz
 
 	TCCR5A = 0x00;
-	TCCR5B = (1<<CS10) | (1<<CS12); // prescaler de 1024
+	TCCR5B = (1<<CS50) | (1<<CS52); // prescaler de 1024
 	TIMSK5 = (1 << TOIE1) ; // Liga interrupção por overflow
 	sei(); // Permite interrupções globais
 }
@@ -420,6 +509,15 @@ ISR (TIMER5_OVF_vect) // Interrupção timer1
 {
 	sinalDeVida++;
 	TCNT5 = 49911; // 1 seg em 16MHz
+	limpar_display();
+	char caractere = tempoParaSair + 65;
+	escrita_valor(caractere);
+	if(carroNaCancela == 1)
+	{
+		tempoParaSair++;
+	}
+	char caractere2 = sinalDeVida + 65;
+	escrita_valor(caractere2);
 	if(sinalDeVida>=29)
 	{
 		sinalDeVida=0;
