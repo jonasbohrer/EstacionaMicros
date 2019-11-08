@@ -157,14 +157,16 @@ void configurar_serial_19200(){
 }
 
 char receber_caractere(void) {
-    while(!(UCSR0A & (1<<RXC0))){
-		if(tempoParaSair>60)
-		{
-			return NULL;
-		}	
+    while(!(UCSR0A & (1<<RXC0)) && (tempoParaSair<60)){
+		//limpar_display();
+		//char caractere = tempoParaSair + 65;
+		//escrita_valor(caractere);
+		atraso_40us();
 	}
-	//escrita_valor(UDR0);
-    return UDR0;
+	    //escrita_valor(UDR0);
+		if (tempoParaSair>=60)
+			return NULL;
+	    return UDR0;
 }
 
 void transmitir_caractere(char caractere){
@@ -191,16 +193,21 @@ int espera_msg_servidor(char msg[], int tempo){
 		ativa_tempo_para_sair();
 	}
 	// Espera pelo comando enquanto o temporizador não estourar
-	while(!(tempoParaSair >= tempo)) {
+	while(!(tempoParaSair >= tempo) || (tempo == 0)) {
 		if (receber_caractere() == msg[0]){
+			escrita_valor('X');
 			if (!(msg[0] == NULL) && (receber_caractere() == msg[1])){
+				escrita_valor('Z');
 				//processar_msg(msg);
 				carroNaCancela=0; //Desliga contador de tempo
+				tempoParaSair=0;
 				return 1;
 			}
 		}
 	}
+	escrita_valor('Y');
 	carroNaCancela=0; //Desliga contador de tempo
+	tempoParaSair=0;
 	return NULL;
 }
 
@@ -343,7 +350,7 @@ void processar_msg(char msg[]){ // Chama subrotinas de acordo com os envios do s
             //Espera por no max 60s msg do servidor avisando que o carro saiu da cancela 1
             if (espera_msg_servidor("SS", 60) != NULL) {
                 //Se ele saiu, armazena a placa e a hora.
-                
+                escrita_valor('l');
                 //Coleta a placa novamente (aqui pode ser feita uma verificção de consistência entre as duas placas. Devem ser iguais, mas não é especificado no projeto esse caso de erro)
                 char placa2[7];
                 placa2[0]=receber_caractere();
@@ -509,15 +516,15 @@ ISR (TIMER5_OVF_vect) // Interrupção timer1
 {
 	sinalDeVida++;
 	TCNT5 = 49911; // 1 seg em 16MHz
-	limpar_display();
-	char caractere = tempoParaSair + 65;
-	escrita_valor(caractere);
+	//limpar_display();
+	//char caractere = tempoParaSair + 65;
+	//escrita_valor(caractere);
 	if(carroNaCancela == 1)
 	{
 		tempoParaSair++;
 	}
-	char caractere2 = sinalDeVida + 65;
-	escrita_valor(caractere2);
+	//char caractere2 = sinalDeVida + 65;
+	//escrita_valor(caractere2);
 	if(sinalDeVida>=29)
 	{
 		sinalDeVida=0;
@@ -563,6 +570,7 @@ int main(void){
 
     // Inicializa??es
 	ativo=1;
+	tempoParaSair=0;
     port_config();
 	configurar_contraste_lcd();
 	lcd_config();
